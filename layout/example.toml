@@ -1,0 +1,69 @@
+[metadata]
+desc            = "Example layout of FreeBSD S4 ELF image"
+
+[elf_header]
+# for e_ident, see [elf_header.e_ident_fields] section below
+e_etype     = 0xfe01  # ET_FREEBSD_S4_IMAGE
+e_machine   = 0x003e  # EM_X86_64
+e_version   = 0x1
+e_entry     = 0x0
+e_phoff     = 64
+e_shoff     = 0
+e_flags     = 0x0
+e_ehsize    = 64
+e_phentsize = 56
+e_phnum     = 3
+e_shentsize = 0
+e_shnum     = 0
+e_shstrndx  = 0
+
+[elf_header.e_ident]
+EI_MAG0       = 0x7f        # Magic number byte 0
+EI_MAG1       = 0x45        # Magic number byte 1 ('E')
+EI_MAG2       = 0x4c        # Magic number byte 2 ('L')
+EI_MAG3       = 0x46        # Magic number byte 3 ('F')
+EI_CLASS      = 0x02        # 64-bit objects (ELFCLASS64)
+EI_DATA       = 0x01        # Little-endian (ELFDATA2LSB)
+EI_VERSION    = 0x01        # Current version (EV_CURRENT)
+EI_OSABI      = 0x09        # FreeBSD (ELFOSABI_FREEBSD)
+EI_ABIVERSION = 0x00        # ABI version
+
+[[program_header]]
+p_type   = 0x1                # PT_LOAD
+p_flags  = 0x7                # PF_R | PF_W ｜PF_X
+p_offset = 0x0000000000200000
+p_vaddr  = 0x0000000000000000
+p_paddr  = 0x0000000000200000
+p_filesz = 0x0000000000004000
+p_memsz  = 0x0000000000004000
+p_align  = 0x0000000000200000
+
+[[program_header]]
+p_type   = 0x61000054          # PT_FREEBSD_S4_PCB
+p_flags  = 0x4                 # PF_R
+p_offset = 0x0000000000204000
+p_vaddr  = 0x0000000000000000
+p_paddr  = 0x0000000000000000
+p_filesz = 0x0000000000000034
+p_memsz  = 0x0000000000000034
+p_align  = 0x0000000000000008
+
+[[program_header]]
+p_type   = 0x61000055          # PT_FREEBSD_S4_TRAMPOLINE
+p_flags  = 0x7                 # PF_RWX
+p_offset = 0x0000000000200000
+p_vaddr  = 0x0000000000000000
+p_paddr  = 0x0000000000200000
+p_filesz = 0x0000000000000000  # Will be calculated automatically
+p_memsz  = 0x0000000000000000  # Will be calculated automatically
+p_align  = 0x0000000000200000
+
+
+[pcb_data]
+cr0              = 0x0000000000000000
+cr3              = 0x0000000000000000
+cr4              = 0x0000000000000000
+rsp              = 0x0000000000201008
+rip              = 0x0000000000200008
+gsbase           = 0x0000000000000000
+acpic_facs_hwsig = 0x00000000
