@@ -11,8 +11,8 @@ This project consists of two main components:
 * [x] **S4 Image Generation:** Functional (Python).
 * [x] **UEFI Build System:** Out-of-tree EDK2 build scripts ready.
 * [x] **Activator (Phase 1):** Successfully reads `s4_image.bin` from the EFI System Partition.
-* [ ] **Activator (Phase 2):** **(WIP)** Parsing ELF/S4 headers and allocating physical memory.
-* [ ] **Activator (Phase 3):** Context restoration and trampoline jump.
+* [x] **Activator (Phase 2):** Parsing ELF/S4 headers and allocating physical memory.
+* [ ] **Activator (Phase 3):** **(WIP)** Context restoration and trampoline jump.
 
 ## Requirements
 
