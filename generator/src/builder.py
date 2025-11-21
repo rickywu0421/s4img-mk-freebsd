@@ -22,8 +22,7 @@ class S4ImgBuilder:
 
 
 
-    def make_image_from_toml(self, toml_path: str, trampoline_path: str,
-                             output_path: str):
+    def make_image_from_toml(self, toml_path: str, trampoline_path: str):
         # Load TOML configuration
         config = self.load_toml_config(toml_path)
 
@@ -77,7 +76,7 @@ class S4ImgBuilder:
             trampoline_hdr=trampoline_hdr,
             pcb_data=pcb_data,
             trampoline_data=trampoline_data,
-            output_path=output_path
+            output_path=S4_IMG_OUTPUT_PATH
         )
 
     def _build_image(self,

@@ -36,8 +36,7 @@ Prepare your configuration and run the generator:
 ```bash
 python3 generator/main.py \
     generator/layout/example.toml \
-    generator/trampoline/hello_world.bin \
-    bin/s4_image.bin
+    generator/trampoline/hello_world.bin
 ```
 
 ### 2. Build UEFI Activator
