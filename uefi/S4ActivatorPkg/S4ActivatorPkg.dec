@@ -1,0 +1,5 @@
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = S4ActivatorPkg
+  PACKAGE_GUID                   = 12345678-1234-1234-1234-1234567890AB # XXX
+  PACKAGE_VERSION                = 0.1
