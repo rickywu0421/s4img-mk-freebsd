@@ -9,6 +9,7 @@
 [Sources]
   Activator.c
   elf64.h
+  Trampoline.nasm
 
 [Packages]
   MdePkg/MdePkg.dec

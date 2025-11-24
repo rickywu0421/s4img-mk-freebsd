@@ -11,6 +11,12 @@
 
 #define S4_IMAGE_NAME L"\\s4_image.bin"
 
+VOID
+EFIAPI
+AsmTransferControl (
+  IN UINT64 EntryPoint,
+  IN UINT64 Context
+);
 
 EFI_STATUS
 EFIAPI
@@ -30,6 +36,8 @@ UefiMain (
     UINT64                             PhdrOffset;
     Elf64_Phdr                         *Elf64PhdrTable    = NULL;
     UINTN                              ReadSize;
+    EFI_PHYSICAL_ADDRESS               PcbPAddr           = 0;
+    EFI_PHYSICAL_ADDRESS               TrampolinePAddr    = 0;
 
     Print(L"[Activator] Locate Protocols...\n");
 
@@ -148,22 +156,21 @@ UefiMain (
       Elf64_Phdr *CurrentPhdr = &Elf64PhdrTable[Num];
 
       EFI_PHYSICAL_ADDRESS PAddr = CurrentPhdr->p_paddr;
+      UINTN FileSize = CurrentPhdr->p_filesz;
+      UINTN MemSize = CurrentPhdr->p_memsz;
+      UINTN SegmentOffset = CurrentPhdr->p_offset;
 
       switch (CurrentPhdr->p_type) {
-        case PT_LOAD:
-          UINTN FileSize = CurrentPhdr->p_filesz;
-          UINTN MemSize = CurrentPhdr->p_memsz;
-          UINTN SegmentOffset = CurrentPhdr->p_offset;
+        case PT_LOAD: {
           UINTN Pages = EFI_SIZE_TO_PAGES(MemSize);
 
           Print(L"[Activator] Segment %d: PT_LOAD segment\n", Num);
           Print(L"[Activator] Allocate %d pages for PT_LOAD segment at %lx...\n", Pages, PAddr);
-          
-          Status = gBS->AllocatePages(
-                   AllocateAddress,
-                   EfiLoaderData,
-                   Pages,
-                   &PAddr);
+
+          Status = gBS->AllocatePages(AllocateAddress,
+                                      EfiLoaderData,
+                                      Pages,
+                                      &PAddr);
           if (EFI_ERROR(Status)) {
             Print(L"Error: Failed to allocate pages at 0x%lx: %r\n", CurrentPhdr->p_paddr, Status);
             goto ErrorExit;
@@ -190,16 +197,101 @@ UefiMain (
           // TODO: If p_memsz > p_filesz, then we need to zero the extra memory space (may be BSS)
 
           break;
-        case PT_FREEBSD_S4_PCB: 
+        }
+        case PT_FREEBSD_S4_PCB: {
           Print(L"[Activator] Segment %d: PT_FREEBSD_S4_PCB segment\n", Num);
+
+          UINTN Pages = EFI_SIZE_TO_PAGES(FileSize);
+
+          // XXX: not knowing if putting PCB payload in UEFI allocated pages
+          // would be a good idea.
+          Status = gBS->AllocatePages(AllocateAnyPages,
+                                      EfiLoaderData,
+                                      Pages,
+                                      &PcbPAddr);
+          if (EFI_ERROR(Status)) {
+            Print(L"ERROR: AllocatePages for PCB payload failed\n");
+            goto ErrorExit;
+          }
+
+          Status = S4ImgFile->SetPosition(S4ImgFile, SegmentOffset);
+          if (EFI_ERROR(Status)) goto ErrorExit;
+
+          Status = S4ImgFile->Read(S4ImgFile, &FileSize, (VOID *)PcbPAddr);
+          if (EFI_ERROR(Status)) goto ErrorExit;
+
+          Print(L"PCB Loaded at: 0x%lx\n", PcbPAddr);
+
           break;
-        case PT_FREEBSD_S4_TRAMPOLINE: 
+        }
+        case PT_FREEBSD_S4_TRAMPOLINE: {
           Print(L"[Activator] Segment %d: PT_FREEBSD_S4_TRAMPOLINE segment\n", Num);
+
+          TrampolinePAddr = PAddr;
+
           break;
+        }
         default: 
           break;
       }
     }
+
+    if (PcbPAddr == 0 || TrampolinePAddr == 0) {
+      Print(L"Error: PCB or Trampoline missing in S4 image!\n");
+      goto ErrorExit;
+    }
+
+
+    gST->ConIn->Reset(gST->ConIn, FALSE);
+    EFI_INPUT_KEY Key;
+    while (gST->ConIn->ReadKeyStroke(gST->ConIn, &Key) == EFI_NOT_READY);
+
+
+    // ============================================================
+    // Exit Boot Services & Jump
+    // ============================================================
+
+    // The memory map here is only for the sake of ExitBootServices() API
+    // since when resume from S4, OS will use the original memory map,
+    // which has already been in the system memory.
+    UINTN  MemoryMapSize = 0;
+    EFI_MEMORY_DESCRIPTOR *MemoryMap = NULL;
+    UINTN  MapKey;
+    UINTN  DescriptorSize;
+    UINT32 DescriptorVersion;
+
+    Status = gBS->GetMemoryMap(&MemoryMapSize, MemoryMap, &MapKey,
+                               &DescriptorSize, &DescriptorVersion);
+    if (Status != EFI_BUFFER_TOO_SMALL) {
+      goto ErrorExit;
+    }
+
+    MemoryMapSize += 8 * DescriptorSize;
+    MemoryMap = AllocatePool(MemoryMapSize);
+
+    Status = gBS->GetMemoryMap(&MemoryMapSize, MemoryMap, &MapKey,
+                                 &DescriptorSize, &DescriptorVersion);
+    if (EFI_ERROR(Status)) {
+      Print(L"Error: GetMemoryMap failed\n");
+      goto ErrorExit;
+    }
+
+    Status = gBS->ExitBootServices(ImageHandle, MapKey);
+    if (EFI_ERROR(Status)) {
+      Status = gBS->GetMemoryMap(&MemoryMapSize, MemoryMap, &MapKey,
+                                 &DescriptorSize, &DescriptorVersion);
+      if (!EFI_ERROR(Status)) {
+        Status = gBS->ExitBootServices(ImageHandle, MapKey);
+      }
+    }
+
+    if (EFI_ERROR(Status)) {
+      goto ErrorExit;
+    }
+
+    AsmTransferControl(TrampolinePAddr, PcbPAddr);
+
+    CpuDeadLoop();
 
 ErrorExit:
     if (Elf64PhdrTable != NULL) {
@@ -211,11 +303,6 @@ ErrorExit:
     if (Root != NULL) {
         Root->Close(Root);
     }
-    
-
-    gST->ConIn->Reset(gST->ConIn, FALSE);
-    EFI_INPUT_KEY Key;
-    while (gST->ConIn->ReadKeyStroke(gST->ConIn, &Key) == EFI_NOT_READY);
 
     return Status;
 }
