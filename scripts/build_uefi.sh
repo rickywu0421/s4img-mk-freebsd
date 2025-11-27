@@ -72,6 +72,18 @@ if [ ! -d "$EDK2_DIR" ]; then
     exit 1
 fi
 
+# Check if BaseTools are compiled
+if [ ! -f "$EDK2_DIR/BaseTools/Source/C/bin/GenFw" ]; then
+    echo "Error: EDK2 BaseTools are not compiled."
+    echo "Please compile them first:"
+    if [ "$(uname -s)" == "FreeBSD" ]; then
+        echo "  gmake -C uefi/edk2/BaseTools/Source/C"
+    else
+        echo "  make -C uefi/edk2/BaseTools"
+    fi
+    exit 1
+fi
+
 if [ ! -d "$PROJECT_PKG_DIR/S4ActivatorPkg" ]; then
     echo "Error: S4ActivatorPkg not found at: $PROJECT_PKG_DIR/S4ActivatorPkg"
     echo "Make sure you are running this script from the project root."
