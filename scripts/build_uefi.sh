@@ -14,6 +14,54 @@ EDK2_DIR="${PROJECT_PKG_DIR}/edk2"
 # Output directory for the final binary.
 OUTPUT_DIR="${PROJECT_ROOT}/bin"
 
+TOOLCHAIN="GCC5"
+export PYTHON_COMMAND=python3
+
+echo "Using Toolchain Tag: $TOOLCHAIN"
+
+# ==============================================================================
+# OS Detection
+# ==============================================================================
+
+if [ "$(uname -s)" == "FreeBSD" ]; then
+    echo "Detected OS: FreeBSD"
+
+    COMPAT_DIR="${PROJECT_ROOT}/bin/compat"
+    mkdir -p "$COMPAT_DIR"
+
+    # 1. Fix MAKE: shim 'make' to 'gmake'
+    ln -sf /usr/local/bin/gmake "$COMPAT_DIR/make"
+    
+    # 2. Fix GCC Tools: Find the latest installed GCC version (e.g., gcc13)
+    # This looks for /usr/local/bin/gcc[0-9]* and picks the last one
+    GCC_PATH=$(ls /usr/local/bin/gcc[0-9]* 2>/dev/null | sort -V | tail -n 1)
+    
+    if [ -z "$GCC_PATH" ]; then
+        echo "Error: GCC not found. Please run 'pkg install gcc'."
+        exit 1
+    fi
+    
+    # Extract version suffix (e.g., "13" from "gcc13")
+    GCC_NAME=$(basename "$GCC_PATH")
+    VER_SUFFIX=${GCC_NAME#gcc}
+    
+    echo "  -> Found GCC version: $GCC_NAME (suffix: $VER_SUFFIX)"
+    
+    # Create symlinks for all GCC toolchain binaries
+    ln -sf "$GCC_PATH"                         "$COMPAT_DIR/gcc"
+    ln -sf "/usr/local/bin/g++$VER_SUFFIX"     "$COMPAT_DIR/g++"
+    ln -sf "/usr/local/bin/gcc-ar$VER_SUFFIX"  "$COMPAT_DIR/gcc-ar"
+    ln -sf "/usr/local/bin/gcc-nm$VER_SUFFIX"  "$COMPAT_DIR/gcc-nm"
+    ln -sf "/usr/local/bin/gcc-ranlib$VER_SUFFIX" "$COMPAT_DIR/gcc-ranlib"
+
+    # 4. Inject compat dir to PATH
+    export PATH="$COMPAT_DIR:$PATH"
+    echo "  -> Toolchain shims active in $COMPAT_DIR"
+else
+    echo "Detected OS: Linux"
+    export MAKE="make"
+fi
+
 # ==============================================================================
 # Pre-flight Checks
 # ==============================================================================
@@ -69,23 +117,23 @@ echo "Starting Build for S4ActivatorPkg..."
 # build flags explanation:
 # -p: Platform DSC file (relative to locations in PACKAGES_PATH)
 # -a: Target Architecture (X64)
-# -t: Toolchain Tag (GCC5 is standard for modern Linux)
+# -t: Toolchain Tag
 # -b: Build Target (DEBUG or RELEASE)
 build -p S4ActivatorPkg/S4ActivatorPkg.dsc \
       -a X64 \
-      -t GCC5 \
+      -t "$TOOLCHAIN" \
       -b DEBUG
 
 # Return to saved directory (sh-compatible alternative to popd)
 cd "$SAVED_DIR" || exit 1
 
-# ==============================================================================
+# =====================================================================w=========
 # Artifact Handling
 # ==============================================================================
 
 # Define the expected location of the generated binary.
 # Note: The path includes the output directory defined in the DSC (Build/S4ActivatorPkg).
-BUILD_RESULT="$EDK2_DIR/Build/S4ActivatorPkg/DEBUG_GCC5/X64/Activator.efi"
+BUILD_RESULT="$EDK2_DIR/Build/S4ActivatorPkg/DEBUG_${TOOLCHAIN}/X64/Activator.efi"
 
 if [ -f "$BUILD_RESULT" ]; then
     echo "========================================"
