@@ -14,11 +14,27 @@ This project consists of two main components:
 * [x] **Activator (Phase 2):** Parsing ELF/S4 headers and allocating physical memory.
 * [x] **Activator (Phase 3):** Context restoration and trampoline jump.
 
-## Requirements
+## Prerequisites & Installationres
+Before cloning, ensure you have the necessary system packages installed.
 
-* **Python 3.11+** (Required for `tomllib`)
-* **Build Tools:** `gcc` (or `clang`), `make` (or `gmake` on FreeBSD), `nasm`.
-* **Virtualization:** QEMU (Linux/FreeBSD) or Bhyve (FreeBSD).
+### Arch Linux
+Requires `base-devel` for build tools, plus QEMU and OVMF for testing.
+
+```bash
+pacman -S base-devel git python nasm gcc make qemu-full edk2-ovmf
+```
+
+### FreeBSD
+Requires `gcc` and `binutils` (for EDK2 GCC5 toolchain compatibility), `gmake`, and virtualization tools.
+
+#### Option 1: Using Binary Packages (Recommended)
+```bash
+pkg install git bash python3 gcc binutils gmake nasm edk2-bhyve mtools
+```
+Note: mtools is used for creating FAT disk images for Bhyve testing.
+
+#### Option 2: Using Ports Collection
+If you need to customize build options, you can install these tools via the Ports Collection (e.g., `/usr/ports/devel/git`, `/usr/ports/lang/python3`, etc.).
 
 ## Project Structure
 
@@ -36,7 +52,7 @@ Use the `--recursive` flag to fetch the project, vendored EDK2 submodule, and su
 
 ```bash
 git clone --recursive https://github.com/rickywu0421/freebsd-s4-tools.git
-cd $YOUR_DIR/freebsd-s4-tools
+cd freebsd-s4-tools
 ```
 Note: If you have already cloned the repo without the recursive flag, run: `git submodule update --init --recursive`
 
@@ -44,8 +60,16 @@ Note: If you have already cloned the repo without the recursive flag, run: `git 
 ### 2. Compile EDK2 BaseTools
 The build tools (build, GenFds, etc.) need to be compiled for your host OS.
 
+#### Arch Linux
+Under the top directory of this repo, run:
 ```bash
 make -C uefi/edk2/BaseTools
+```
+
+#### FreeBSD
+Under the top directory of this repo, run:
+```bash
+gmake -C uefi/edk2/BaseTools
 ```
 
 ## Development Cycle
@@ -71,11 +95,17 @@ Compile the EDK2 application using the helper script. This script automatically 
 
 ### 3. Run Simulation
 
+#### Arch Linux
+
 Launch QEMU with OVMF. The script automatically mounts `bin/esp/` as the boot partition and redirects the virtual serial port (COM1) to the terminal.
 
 ```
 ./scripts/run_qemu.sh
 ```
+
+#### FreeBSD
+
+WIP.
 
 ## Configuration
 Modify `generator/layout/example.toml` to define:
