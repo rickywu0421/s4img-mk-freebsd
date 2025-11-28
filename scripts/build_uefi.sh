@@ -77,7 +77,7 @@ if [ ! -f "$EDK2_DIR/BaseTools/Source/C/bin/GenFw" ]; then
     echo "Error: EDK2 BaseTools are not compiled."
     echo "Please compile them first:"
     if [ "$(uname -s)" == "FreeBSD" ]; then
-        echo "  gmake -C uefi/edk2/BaseTools/Source/C"
+        echo "  gmake -C uefi/edk2/BaseTools"
     else
         echo "  make -C uefi/edk2/BaseTools"
     fi

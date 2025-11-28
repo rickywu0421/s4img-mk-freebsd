@@ -29,7 +29,7 @@ Requires `gcc` and `binutils` (for EDK2 GCC5 toolchain compatibility), `gmake`, 
 
 #### Option 1: Using Binary Packages (Recommended)
 ```bash
-pkg install git bash python3 gcc binutils gmake nasm edk2-bhyve mtools
+pkg install git bash python gcc binutils gmake nasm edk2-bhyve mtools
 ```
 Note: mtools is used for creating FAT disk images for Bhyve testing.
 
@@ -105,7 +105,13 @@ Launch QEMU with OVMF. The script automatically mounts `bin/esp/` as the boot pa
 
 #### FreeBSD
 
-WIP.
+Launch Bhyve with OVMF. The script automatically creates a FAT32 disk image containing the artifacts and redirects the virtual serial port (COM1) to the terminal.
+
+```
+sudo ./scripts/run_bhyve.sh
+```
+
+Note: Root privileges are required for Bhyve networking and device creation.
 
 ## Configuration
 Modify `generator/layout/example.toml` to define:
